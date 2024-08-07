@@ -10,7 +10,7 @@ import com.facebook.react.defaults.DefaultNewArchitectureEntryPoint.load
 import com.facebook.react.defaults.DefaultReactHost.getDefaultReactHost
 import com.facebook.react.defaults.DefaultReactNativeHost
 import com.facebook.soloader.SoLoader
-
+import com.centaurwarchief.smslistener.SmsListenerPackage;
 class MainApplication : Application(), ReactApplication {
 
   override val reactNativeHost: ReactNativeHost =
