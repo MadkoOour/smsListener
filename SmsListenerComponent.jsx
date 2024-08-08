@@ -7,6 +7,7 @@ const SmsListenerComponent = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [deviceNumber, setDeviceNumber] = useState('');
   const [messageBody, setMessageBody] = useState('');
+  const [simInfo, setSimInfo] = useState([]);
 
   // Request permissions on component mount
   useEffect(() => {
@@ -34,21 +35,51 @@ const SmsListenerComponent = () => {
   }, []);
 
   useEffect(() => {
+    const fetchSimInfo = async () => {
+      try {
+        const simInfo = await SmsModule.getSimInfo();
+        setSimInfo(simInfo);
+        console.info('SIM Info:', simInfo);
+      } catch (error) {
+        console.error('Failed to get SIM info', error);
+        Alert.alert('Error', 'Failed to get SIM info');
+      }
+    };
+
+    fetchSimInfo();
+  }, []);
+
+  useEffect(() => {
     const subscription = SmsListener.addListener(async message => {
       console.info('Received SMS:', message);
 
       if (message) {
-        const { originatingAddress, body } = message;
+        const { originatingAddress, body, subscriptionId } = message;
         setPhoneNumber(originatingAddress);
         setMessageBody(body);
 
-        try {
-          const simInfo = await SmsModule.getSimInfo();
-          console.info('SIM Info:', simInfo); // Log to verify format
-          setDeviceNumber(simInfo);
-        } catch (error) {
-          console.error("Failed to get SIM info", error);
-          Alert.alert('Error', 'Failed to get SIM info');
+        // Log subscriptionId and incoming SIM info
+        console.log('Incoming SMS subscriptionId:', subscriptionId);
+        console.log('Available SIM info:', simInfo);
+
+        // Normalize phone numbers
+        const normalizePhoneNumber = (number) => number.replace(/[^0-9]/g, '');
+        const normalizedOriginatingAddress = normalizePhoneNumber(originatingAddress);
+
+        // Extract phone numbers from SIM info
+        const simInfoArray = simInfo.map(info => ({
+          id: info.subscriptionId,
+          number: normalizePhoneNumber(info.phoneNumber)
+        }));
+        console.log('SIM Info Array:', simInfoArray);
+
+        // Match the subscription ID from the SMS with the SIM info
+        const simInfoMatched = simInfoArray.find(info => info.id === subscriptionId);
+
+        if (simInfoMatched) {
+          setDeviceNumber(simInfoMatched.number);
+        } else {
+          setDeviceNumber('Not found');
         }
       }
     });
@@ -56,8 +87,9 @@ const SmsListenerComponent = () => {
     return () => {
       subscription.remove();
     };
-  }, []);
+  }, [simInfo]);
 
+  console.log("🚀 ~ SmsListenerComponent ~ deviceNumber:", deviceNumber);
   return (
     <View style={styles.container}>
       <Text>SmsListener</Text>
