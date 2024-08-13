@@ -2,12 +2,14 @@ import { StyleSheet, Text, View, Alert, Platform, PermissionsAndroid } from 'rea
 import React, { useEffect, useState } from 'react';
 import SmsListener from 'react-native-android-sms-listener';
 import SmsModule from './modules/SmsModule';
+import SmsAndroid from 'react-native-get-sms-android';
 
 const SmsListenerComponent = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [deviceNumber, setDeviceNumber] = useState('');
   const [messageBody, setMessageBody] = useState('');
   const [simInfo, setSimInfo] = useState([]);
+  const [smsList, setSmsList] = useState([]);
 
   // Request permissions on component mount
   useEffect(() => {
@@ -18,11 +20,13 @@ const SmsListenerComponent = () => {
             PermissionsAndroid.PERMISSIONS.READ_SMS,
             PermissionsAndroid.PERMISSIONS.RECEIVE_SMS,
             PermissionsAndroid.PERMISSIONS.READ_PHONE_STATE,
+            PermissionsAndroid.PERMISSIONS.READ_PHONE_NUMBERS,
           ]);
 
           if (granted['android.permission.READ_SMS'] !== PermissionsAndroid.RESULTS.GRANTED ||
               granted['android.permission.RECEIVE_SMS'] !== PermissionsAndroid.RESULTS.GRANTED ||
-              granted['android.permission.READ_PHONE_STATE'] !== PermissionsAndroid.RESULTS.GRANTED) {
+              granted['android.permission.READ_PHONE_STATE'] !== PermissionsAndroid.RESULTS.GRANTED ||
+              granted['android.permission.READ_PHONE_NUMBERS'] !== PermissionsAndroid.RESULTS.GRANTED) {
             Alert.alert('Permissions not granted', 'Please grant all required permissions.');
           }
         } catch (err) {
@@ -50,46 +54,54 @@ const SmsListenerComponent = () => {
   }, []);
 
   useEffect(() => {
+    const fetchSmsList = () => {
+      SmsAndroid.list(
+        JSON.stringify({
+          
+        }), // Empty filter to get all SMS
+        (fail) => {
+          console.log('Failed with this error: ' + fail);
+        },
+        (count, smsList) => {
+          console.log('Count: ', count);
+          const arr = JSON.parse(smsList);
+
+          // Filter messages manually by sim_id (assuming sub_id represents sim_id)
+          const filteredMessages = arr.filter(message => message.sim_id === 1); // Change 1 to the appropriate SIM ID
+          console.log('Filtered List:', filteredMessages);
+
+          setSmsList(filteredMessages);
+        }
+      );
+    };
+
+    // Fetch SMS list only after SIM info is fetched
+    if (simInfo.length > 0) {
+      fetchSmsList();
+    }
+
+    // Listen for incoming SMS
     const subscription = SmsListener.addListener(async message => {
       console.info('Received SMS:', message);
-
-      if (message) {
-        const { originatingAddress, body, subscriptionId } = message;
-        setPhoneNumber(originatingAddress);
-        setMessageBody(body);
-
-        // Log subscriptionId and incoming SIM info
-        console.log('Incoming SMS subscriptionId:', subscriptionId);
-        console.log('Available SIM info:', simInfo);
-
-        // Normalize phone numbers
-        const normalizePhoneNumber = (number) => number.replace(/[^0-9]/g, '');
-        const normalizedOriginatingAddress = normalizePhoneNumber(originatingAddress);
-
-        // Extract phone numbers from SIM info
-        const simInfoArray = simInfo.map(info => ({
-          id: info.subscriptionId,
-          number: normalizePhoneNumber(info.phoneNumber)
-        }));
-        console.log('SIM Info Array:', simInfoArray);
-
-        // Match the subscription ID from the SMS with the SIM info
-        const simInfoMatched = simInfoArray.find(info => info.id === subscriptionId);
-
-        if (simInfoMatched) {
-          setDeviceNumber(simInfoMatched.number);
-        } else {
-          setDeviceNumber('Not found');
-        }
-      }
+      const { originatingAddress, body } = message;
+      setPhoneNumber(originatingAddress);
+      setMessageBody(body);
+      // Fetch and update SMS list when a new message is received
+      fetchSmsList();
     });
 
     return () => {
       subscription.remove();
     };
-  }, [simInfo]);
+  }, [simInfo]); // Only trigger when simInfo is updated
 
-  console.log("🚀 ~ SmsListenerComponent ~ deviceNumber:", deviceNumber);
+  useEffect(() => {
+    // Log the updated SMS list whenever it changes
+    smsList.forEach((object) => {
+      console.log('SMS Object: ' + JSON.stringify(object));
+    });
+  }, [smsList]);
+
   return (
     <View style={styles.container}>
       <Text>SmsListener</Text>
