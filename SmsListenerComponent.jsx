@@ -126,7 +126,7 @@ const SmsListenerComponent = () => {
   
   return (
     <View style={styles.container}>
-      <Text>SmsListener</Text>
+      <Text>SMS Listener</Text>
       <Text>Sender: {phoneNumber}</Text>
       <Text>Message: {messageBody}</Text>
       <Text>Device Number: {deviceNumber}</Text>
