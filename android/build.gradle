@@ -6,15 +6,30 @@ buildscript {
         targetSdkVersion = 34
         ndkVersion = "26.1.10909125"
         kotlinVersion = "1.9.22"
+        gradlePluginVersion = "8.1.1"
+        reactNativeGradlePluginVersion = "0.72.0"
     }
     repositories {
         google()
         mavenCentral()
     }
     dependencies {
-        classpath("com.android.tools.build:gradle")
-        classpath("com.facebook.react:react-native-gradle-plugin")
-        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin")
+        classpath("com.android.tools.build:gradle:$gradlePluginVersion")
+        classpath("com.facebook.react:react-native-gradle-plugin:$reactNativeGradlePluginVersion")
+        classpath("org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlinVersion")
+    }
+}
+
+allprojects {
+    repositories {
+        google()
+        mavenCentral()
+        jcenter() // Note: jcenter() is deprecated but might still be needed
+    }
+    configurations.all {
+        resolutionStrategy {
+            force 'com.android.tools.build:gradle:8.1.1' // Force the use of a more recent version
+        }
     }
 }
 
