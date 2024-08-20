@@ -13,7 +13,7 @@ import SmsAndroid from 'react-native-get-sms-android';
 import axios from 'axios'; 
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
 import NetInfo from '@react-native-community/netinfo'; 
-
+const targetUrl = 'https://damenpay.app/self_charge_ng/api/v1/selfcharge/NewMessage'
 const SmsListenerComponent = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [deviceNumber, setDeviceNumber] = useState('');
@@ -135,9 +135,10 @@ const SmsListenerComponent = () => {
     try {
       const storedMessages = await AsyncStorage.getItem('storedMessages');
       const messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
+      // console.log("🚀 ~ sendStoredMessages ~ messagesArray:", messagesArray)
       if (messagesArray.length > 0) {
         for (const message of messagesArray) {
-          await axios.post('/selfCharge', message);
+          await axios.post(targetUrl, message);
           console.log('Successfully sent stored message:', message);
         }
         // Clear the stored messages after sending
@@ -150,18 +151,40 @@ const SmsListenerComponent = () => {
 
   // Check connection and send or store the message
   const sendOrStoreMessage = async (message) => {
-    const state = await NetInfo.fetch();
-    if (state.isConnected) {
-      axios.post('https://your-backend-url.com/selfCharge', message)
-        .then(response => {
-          console.log('Successfully sent to the backend:', response.data);
-        })
-        .catch(error => {
-          console.error('Failed to send to the backend, storing message:', error);
+    try {
+      const state = await NetInfo.fetch();
+      
+      if (state.isConnected) {
+        console.log('sendOrStoreMessage connected ..............!', message);
+  
+        try {
+          const res = await axios.post(targetUrl, message, {
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
+          
+          if (res.status === 200 || res.status === 201) {
+            console.log("Message sent successfully:", res.data);
+          } else {
+            console.log(`Failed with status ${res.status}:`, res.data);
+            storeMessageLocally(message);
+          }
+        } catch (error) {
+          if (error.response) {
+            console.error("Error response data:", error.response.data);
+          }
+          console.error("Error sending message:", error.message);
           storeMessageLocally(message);
-        });
-    } else {
-      console.log('No internet connection, storing message locally.');
+        }
+        
+      } else {
+        console.log('No internet connection, storing message locally.');
+        storeMessageLocally(message);
+      }
+    } catch (error) {
+      console.error("🚀 ~ sendOrStoreMessage ~ Error checking connection:", error);
+      // You may choose to store the message locally in case of any error in checking connection.
       storeMessageLocally(message);
     }
   };
@@ -170,10 +193,9 @@ const SmsListenerComponent = () => {
     if (phoneNumber && messageBody && deviceNumber) {
       const finalInfo = {
         sender: phoneNumber,
-        messageBody: messageBody,
-        reciever: deviceNumber,
+        msg: messageBody,
+        sim_detail: deviceNumber,
       };
-      console.log("🚀 ~ SmsListenerComponent ~ finalInfo:", finalInfo);
 
       sendOrStoreMessage(finalInfo);
     }
@@ -181,8 +203,8 @@ const SmsListenerComponent = () => {
 
 
   useEffect(() => {
-    const interval = setInterval(sendStoredMessages, 3600000); 
-    return () => clearInterval(interval);
+    setInterval(sendStoredMessages, 60000); 
+    // return () => clearInterval(interval);
   }, []);
 
   return (
