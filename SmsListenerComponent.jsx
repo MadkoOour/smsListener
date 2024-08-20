@@ -152,7 +152,7 @@ const SmsListenerComponent = () => {
   const sendOrStoreMessage = async (message) => {
     const state = await NetInfo.fetch();
     if (state.isConnected) {
-      axios.post('https://your-backend-url.com/selfCharge', message)
+      axios.post('/selfCharge', message)
         .then(response => {
           console.log('Successfully sent to the backend:', response.data);
         })
@@ -167,6 +167,20 @@ const SmsListenerComponent = () => {
   };
 
   useEffect(() => {
+    const handleConnectionChange = state => {
+      if (state.isConnected) {
+        sendStoredMessages();
+      }
+    };
+
+    const unsubscribe = NetInfo.addEventListener(handleConnectionChange);
+
+    return () => {
+      unsubscribe();
+    };
+  }, []);
+
+  useEffect(() => {
     if (phoneNumber && messageBody && deviceNumber) {
       const finalInfo = {
         sender: phoneNumber,
@@ -178,12 +192,6 @@ const SmsListenerComponent = () => {
       sendOrStoreMessage(finalInfo);
     }
   }, [phoneNumber, messageBody, deviceNumber, smsList]);
-
-
-  useEffect(() => {
-    const interval = setInterval(sendStoredMessages, 3600000); 
-    return () => clearInterval(interval);
-  }, []);
 
   return (
     <View style={styles.container}>

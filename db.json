@@ -1,0 +1,16 @@
+{
+    "messages": [
+      {
+        "id": 1,
+        "sender": "1234567890",
+        "messageBody": "Test message",
+        "receiver": "0987654321"
+      },
+      {
+        "id": 2,
+        "sender": "0987654321",
+        "messageBody": "Another test message",
+        "receiver": "1234567890"
+      }
+    ]
+  }
