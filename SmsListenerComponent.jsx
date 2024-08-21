@@ -6,14 +6,19 @@ import {
   Platform,
   PermissionsAndroid,
 } from 'react-native';
-import React, {useEffect, useState} from 'react';
+import React, {useEffect, useState, useRef} from 'react';
+import _ from 'lodash';
 import SmsListener from 'react-native-android-sms-listener';
 import SmsModule from './modules/SmsModule';
 import SmsAndroid from 'react-native-get-sms-android';
 import axios from 'axios'; 
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
 import NetInfo from '@react-native-community/netinfo'; 
+
+
 const targetUrl = 'https://damenpay.app/self_charge_ng/api/v1/selfcharge/NewMessage'
+let effectCounter = 0;  // Initialize the counter
+
 const SmsListenerComponent = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
   const [deviceNumber, setDeviceNumber] = useState('');
@@ -78,31 +83,38 @@ const SmsListenerComponent = () => {
             const filteredMessages = arr.filter(message =>
               simInfo.some(sim => sim.subscriptionId === message.sim_id),
             );
-            
+  
             const newFilteredList = filteredMessages.map(msg => {
-              const founded = simInfo.find(sim => sim.subscriptionId === msg.sim_id);
+              const found = simInfo.find(sim => sim.subscriptionId === msg.sim_id);
               return {
                 ...msg,
-                reciever: founded.phoneNumber
-              }
+                reciever: found.phoneNumber,
+              };
             });
+  
             setSmsList(newFilteredList);
+            if (newFilteredList.length > 0) {
+              const lastSmsObject = newFilteredList[0];
+              setPhoneNumber(lastSmsObject.address);
+              setMessageBody(lastSmsObject.body);
+              setDeviceNumber(lastSmsObject.reciever);
+            }
           }
         },
       );
     };
-
+  
     if (simInfo.length > 0) {
       fetchSmsList();
     }
-
+  
     const subscription = SmsListener.addListener(async message => {
-      const {originatingAddress, body} = message;
+      const { originatingAddress, body } = message;
       setPhoneNumber(originatingAddress);
       setMessageBody(body);
-      fetchSmsList();
+      fetchSmsList(); // This will trigger the update of deviceNumber and smsList
     });
-
+  
     return () => {
       subscription.remove();
     };
@@ -122,6 +134,7 @@ const SmsListenerComponent = () => {
     try {
       const storedMessages = await AsyncStorage.getItem('storedMessages');
       const messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
+      console.log("🚀 ~ storeMessageLocally ~ messagesArray:", messagesArray)
       messagesArray.push(message);
       await AsyncStorage.setItem('storedMessages', JSON.stringify(messagesArray));
       console.log('Message stored locally:', message);
@@ -134,15 +147,40 @@ const SmsListenerComponent = () => {
   const sendStoredMessages = async () => {
     try {
       const storedMessages = await AsyncStorage.getItem('storedMessages');
-      const messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
-      // console.log("🚀 ~ sendStoredMessages ~ messagesArray:", messagesArray)
+      let messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
+      // console.log("🚀 ~ sendStoredMessages ~ messagesArray:", messagesArray);
       if (messagesArray.length > 0) {
+        const messagesToKeep = [];
+
         for (const message of messagesArray) {
-          await axios.post(targetUrl, message);
-          console.log('Successfully sent stored message:', message);
+          try {
+            console.log("Attempting to send stored message:", message);
+            const res = await axios.post(targetUrl, message, {
+              headers: {
+                'Content-Type': 'application/json',
+              },
+            });
+
+            if (res.status === 200 || res.status === 201) {
+              console.log("Message sent successfully:", res.data);
+            } else {
+              console.log(`Failed with status ${res.status}:`, res.data);
+              messagesToKeep.push(message); // Keep this message if sending failed
+            }
+          } catch (error) {
+            if (error.response) {
+              console.error("Error response data:", error.response.data);
+            }
+            console.error("Error sending message:", error.message);
+            messagesToKeep.push(message); // Keep this message if sending failed
+          }
         }
-        // Clear the stored messages after sending
-        await AsyncStorage.removeItem('storedMessages');
+
+        if (messagesToKeep.length > 0) {
+          await AsyncStorage.setItem('storedMessages', JSON.stringify(messagesToKeep));
+        } else {
+          await AsyncStorage.removeItem('storedMessages');
+        }
       }
     } catch (error) {
       console.error('Failed to send stored messages:', error);
@@ -155,7 +193,7 @@ const SmsListenerComponent = () => {
       const state = await NetInfo.fetch();
       
       if (state.isConnected) {
-        console.log('sendOrStoreMessage connected ..............!', message);
+        // console.log('sendOrStoreMessage connected ..............!', message);
   
         try {
           const res = await axios.post(targetUrl, message, {
@@ -165,6 +203,7 @@ const SmsListenerComponent = () => {
           });
           
           if (res.status === 200 || res.status === 201) {
+            console.log("The message: " , message)
             console.log("Message sent successfully:", res.data);
           } else {
             console.log(`Failed with status ${res.status}:`, res.data);
@@ -189,17 +228,23 @@ const SmsListenerComponent = () => {
     }
   };
 
+  const sendDebouncedMessage = useRef(_.debounce((finalInfo) => {
+    sendOrStoreMessage(finalInfo);
+  }, 300)).current;
+
   useEffect(() => {
     if (phoneNumber && messageBody && deviceNumber) {
+      effectCounter++;  // Increment the counter
+      console.log("useEffect triggered count:", effectCounter);      
       const finalInfo = {
         sender: phoneNumber,
         msg: messageBody,
         sim_detail: deviceNumber,
       };
 
-      sendOrStoreMessage(finalInfo);
+      sendDebouncedMessage(finalInfo);
     }
-  }, [phoneNumber, messageBody, deviceNumber, smsList]);
+  }, [phoneNumber, messageBody, deviceNumber]);
 
 
   useEffect(() => {
