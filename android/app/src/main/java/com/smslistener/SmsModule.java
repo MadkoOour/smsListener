@@ -4,7 +4,6 @@ import android.content.Context;
 import android.os.Build;
 import android.telephony.SubscriptionInfo;
 import android.telephony.SubscriptionManager;
-import android.telephony.TelephonyManager;
 import android.util.Log;
 
 import com.facebook.react.bridge.Promise;
@@ -54,8 +53,9 @@ public class SmsModule extends ReactContextBaseJavaModule {
                 WritableArray simInfoArray = Arguments.createArray();
                 for (SubscriptionInfo subscriptionInfo : subscriptionInfoList) {
                     int subscriptionId = subscriptionInfo.getSubscriptionId();
-                    String phoneNumber;
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+                    String phoneNumber = null;
+
+                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                         phoneNumber = subscriptionManager.getPhoneNumber(subscriptionId);
                     } else {
                         phoneNumber = subscriptionInfo.getNumber();

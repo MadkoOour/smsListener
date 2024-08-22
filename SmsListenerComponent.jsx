@@ -81,11 +81,11 @@ const SmsListenerComponent = () => {
 
           if (simInfo?.length > 0) {
             const filteredMessages = arr.filter(message =>
-              simInfo.some(sim => sim.subscriptionId === message.sim_id),
+              simInfo.some(sim => sim.subscriptionId === message.sim_id || sim.subscriptionId === message.sub_id),
             );
   
             const newFilteredList = filteredMessages.map(msg => {
-              const found = simInfo.find(sim => sim.subscriptionId === msg.sim_id);
+              const found = simInfo.find(sim => sim.subscriptionId === msg.sim_id || sim.subscriptionId === msg.sub_id);
               return {
                 ...msg,
                 reciever: found.phoneNumber,
