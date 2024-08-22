@@ -18,7 +18,7 @@ const App = () => {
             }
           );
           if (granted === PermissionsAndroid.RESULTS.GRANTED) {
-            console.log("You can receive SMS messages");
+            // console.log("You can receive SMS messages");
           } else {
             console.log("SMS permission denied");
           }

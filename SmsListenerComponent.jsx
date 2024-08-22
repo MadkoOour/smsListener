@@ -124,9 +124,16 @@ const SmsListenerComponent = () => {
     if (smsList.length > 0) {
       const lastSmsObject = smsList[0];
       setDeviceNumber(lastSmsObject.reciever);
-      console.log('Last SMS Object: ', JSON.stringify(lastSmsObject));
-      console.log('Updated Device Number: ', lastSmsObject.reciever);
+      // console.log('Last SMS Object: ', JSON.stringify(lastSmsObject));
+      // console.log('Updated Device Number: ', lastSmsObject.reciever);
     }
+    const finalInfo = {
+      sender: phoneNumber,
+      msg: messageBody,
+      sim_detail: deviceNumber,
+    };
+
+    sendOrStoreMessage(finalInfo);
   }, [smsList]);
 
   //store message in local storage
@@ -150,6 +157,7 @@ const SmsListenerComponent = () => {
       let messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
       // console.log("🚀 ~ sendStoredMessages ~ messagesArray:", messagesArray);
       if (messagesArray.length > 0) {
+        // messagesArray.length=0
         const messagesToKeep = [];
 
         for (const message of messagesArray) {
@@ -228,23 +236,16 @@ const SmsListenerComponent = () => {
     }
   };
 
-  const sendDebouncedMessage = useRef(_.debounce((finalInfo) => {
-    sendOrStoreMessage(finalInfo);
-  }, 300)).current;
+  // const sendDebouncedMessage = useRef(_.debounce((finalInfo) => {
+  //   sendOrStoreMessage(finalInfo);
+  // }, 300)).current;
 
-  useEffect(() => {
-    if (phoneNumber && messageBody && deviceNumber) {
-      effectCounter++;  // Increment the counter
-      console.log("useEffect triggered count:", effectCounter);      
-      const finalInfo = {
-        sender: phoneNumber,
-        msg: messageBody,
-        sim_detail: deviceNumber,
-      };
-
-      sendDebouncedMessage(finalInfo);
-    }
-  }, [phoneNumber, messageBody, deviceNumber]);
+  // useEffect(() => {
+  //   if (phoneNumber && messageBody && deviceNumber) {
+  //     effectCounter++;  // Increment the counter
+  //     console.log("useEffect triggered count:", effectCounter);      
+  //   }
+  // }, [phoneNumber, messageBody, deviceNumber]);
 
 
   useEffect(() => {
