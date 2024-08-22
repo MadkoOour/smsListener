@@ -14,6 +14,7 @@ import SmsAndroid from 'react-native-get-sms-android';
 import axios from 'axios'; 
 import AsyncStorage from '@react-native-async-storage/async-storage'; 
 import NetInfo from '@react-native-community/netinfo'; 
+import BackgroundTimer from 'react-native-background-timer';
 
 
 const targetUrl = 'https://damenpay.app/self_charge_ng/api/v1/selfcharge/NewMessage'
@@ -138,17 +139,19 @@ const SmsListenerComponent = () => {
 
   //store message in local storage
   const storeMessageLocally = async (message) => {
+    if (!message.sender || !message.msg || !message.sim_detail) {
     try {
       const storedMessages = await AsyncStorage.getItem('storedMessages');
       const messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
-      console.log("🚀 ~ storeMessageLocally ~ messagesArray:", messagesArray)
+      messagesArray.length=0
+      // console.log("🚀 ~ storeMessageLocally ~ messagesArray:", messagesArray)
       messagesArray.push(message);
       await AsyncStorage.setItem('storedMessages', JSON.stringify(messagesArray));
       console.log('Message stored locally:', message);
     } catch (error) {
       console.error('Failed to store message locally:', error);
     }
-  };
+  }};
 
   // Function to send messages from local storage
   const sendStoredMessages = async () => {
@@ -158,6 +161,7 @@ const SmsListenerComponent = () => {
       // console.log("🚀 ~ sendStoredMessages ~ messagesArray:", messagesArray);
       if (messagesArray.length > 0) {
         // messagesArray.length=0
+        // console.log("+++++++++++")
         const messagesToKeep = [];
 
         for (const message of messagesArray) {
@@ -197,6 +201,7 @@ const SmsListenerComponent = () => {
 
   // Check connection and send or store the message
   const sendOrStoreMessage = async (message) => {
+    if (!message.sender || !message.msg || !message.sim_detail) {
     try {
       const state = await NetInfo.fetch();
       
@@ -234,23 +239,17 @@ const SmsListenerComponent = () => {
       // You may choose to store the message locally in case of any error in checking connection.
       storeMessageLocally(message);
     }
-  };
-
-  // const sendDebouncedMessage = useRef(_.debounce((finalInfo) => {
-  //   sendOrStoreMessage(finalInfo);
-  // }, 300)).current;
-
-  // useEffect(() => {
-  //   if (phoneNumber && messageBody && deviceNumber) {
-  //     effectCounter++;  // Increment the counter
-  //     console.log("useEffect triggered count:", effectCounter);      
-  //   }
-  // }, [phoneNumber, messageBody, deviceNumber]);
+  }};
 
 
   useEffect(() => {
-    setInterval(sendStoredMessages, 60000); 
-    // return () => clearInterval(interval);
+    const intervalId = BackgroundTimer.setInterval(() => {
+      sendStoredMessages();
+    }, 10000);
+  
+    return () => {
+      BackgroundTimer.clearInterval(intervalId);
+    };
   }, []);
 
   return (
