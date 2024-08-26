@@ -94,12 +94,6 @@ const SmsListenerComponent = () => {
             });
   
             setSmsList(newFilteredList);
-            if (newFilteredList.length > 0) {
-              const lastSmsObject = newFilteredList[0];
-              setPhoneNumber(lastSmsObject.address);
-              setMessageBody(lastSmsObject.body);
-              setDeviceNumber(lastSmsObject.reciever);
-            }
           }
         },
       );
@@ -127,19 +121,19 @@ const SmsListenerComponent = () => {
       setDeviceNumber(lastSmsObject.reciever);
       // console.log('Last SMS Object: ', JSON.stringify(lastSmsObject));
       // console.log('Updated Device Number: ', lastSmsObject.reciever);
-    }
+    
     const finalInfo = {
-      sender: phoneNumber,
-      msg: messageBody,
-      sim_detail: deviceNumber,
+      sender: lastSmsObject?.address,
+      msg: lastSmsObject?.body,
+      sim_detail: lastSmsObject?.reciever,
     };
 
     sendOrStoreMessage(finalInfo);
+    }
   }, [smsList]);
 
   //store message in local storage
   const storeMessageLocally = async (message) => {
-    if (!message.sender || !message.msg || !message.sim_detail) {
     try {
       const storedMessages = await AsyncStorage.getItem('storedMessages');
       const messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
@@ -151,7 +145,7 @@ const SmsListenerComponent = () => {
     } catch (error) {
       console.error('Failed to store message locally:', error);
     }
-  }};
+  };
 
   // Function to send messages from local storage
   const sendStoredMessages = async () => {
@@ -160,7 +154,7 @@ const SmsListenerComponent = () => {
       let messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
       // console.log("🚀 ~ sendStoredMessages ~ messagesArray:", messagesArray);
       if (messagesArray.length > 0) {
-        // messagesArray.length=0
+        messagesArray.length=0
         // console.log("+++++++++++")
         const messagesToKeep = [];
 
@@ -201,7 +195,6 @@ const SmsListenerComponent = () => {
 
   // Check connection and send or store the message
   const sendOrStoreMessage = async (message) => {
-    if (!message.sender || !message.msg || !message.sim_detail) {
     try {
       const state = await NetInfo.fetch();
       
@@ -239,13 +232,13 @@ const SmsListenerComponent = () => {
       // You may choose to store the message locally in case of any error in checking connection.
       storeMessageLocally(message);
     }
-  }};
+  };
 
 
   useEffect(() => {
     const intervalId = BackgroundTimer.setInterval(() => {
       sendStoredMessages();
-    }, 10000);
+    }, 25000);
   
     return () => {
       BackgroundTimer.clearInterval(intervalId);
