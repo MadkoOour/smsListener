@@ -137,7 +137,7 @@ const SmsListenerComponent = () => {
     try {
       const storedMessages = await AsyncStorage.getItem('storedMessages');
       const messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
-      messagesArray.length=0
+      // messagesArray.length=0
       // console.log("🚀 ~ storeMessageLocally ~ messagesArray:", messagesArray)
       messagesArray.push(message);
       await AsyncStorage.setItem('storedMessages', JSON.stringify(messagesArray));
@@ -154,7 +154,7 @@ const SmsListenerComponent = () => {
       let messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
       // console.log("🚀 ~ sendStoredMessages ~ messagesArray:", messagesArray);
       if (messagesArray.length > 0) {
-        messagesArray.length=0
+        // messagesArray.length=0
         // console.log("+++++++++++")
         const messagesToKeep = [];
 
@@ -238,7 +238,7 @@ const SmsListenerComponent = () => {
   useEffect(() => {
     const intervalId = BackgroundTimer.setInterval(() => {
       sendStoredMessages();
-    }, 25000);
+    }, 10000);
   
     return () => {
       BackgroundTimer.clearInterval(intervalId);
