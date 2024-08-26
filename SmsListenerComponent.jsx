@@ -6,7 +6,7 @@ import {
   Platform,
   PermissionsAndroid,
 } from 'react-native';
-import React, {useEffect, useState, useRef} from 'react';
+import React, {useEffect, useState} from 'react';
 import _ from 'lodash';
 import SmsListener from 'react-native-android-sms-listener';
 import SmsModule from './modules/SmsModule';
@@ -16,9 +16,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import NetInfo from '@react-native-community/netinfo'; 
 import BackgroundTimer from 'react-native-background-timer';
 
-
-const targetUrl = 'https://damenpay.app/self_charge_ng/api/v1/selfcharge/NewMessage'
-let effectCounter = 0;  // Initialize the counter
+const targetUrl = 'https://damenpay.app/self_charge_ng/api/v1/selfcharge/NewMessage';
 
 const SmsListenerComponent = () => {
   const [phoneNumber, setPhoneNumber] = useState('');
@@ -119,26 +117,20 @@ const SmsListenerComponent = () => {
     if (smsList.length > 0) {
       const lastSmsObject = smsList[0];
       setDeviceNumber(lastSmsObject.reciever);
-      // console.log('Last SMS Object: ', JSON.stringify(lastSmsObject));
-      // console.log('Updated Device Number: ', lastSmsObject.reciever);
-    
-    const finalInfo = {
-      sender: lastSmsObject?.address,
-      msg: lastSmsObject?.body,
-      sim_detail: lastSmsObject?.reciever,
-    };
+      const finalInfo = {
+        sender: lastSmsObject?.address,
+        msg: lastSmsObject?.body,
+        sim_detail: lastSmsObject?.reciever,
+      };
 
-    sendOrStoreMessage(finalInfo);
+      sendOrStoreMessage(finalInfo);
     }
   }, [smsList]);
 
-  //store message in local storage
   const storeMessageLocally = async (message) => {
     try {
       const storedMessages = await AsyncStorage.getItem('storedMessages');
       const messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
-      // messagesArray.length=0
-      // console.log("🚀 ~ storeMessageLocally ~ messagesArray:", messagesArray)
       messagesArray.push(message);
       await AsyncStorage.setItem('storedMessages', JSON.stringify(messagesArray));
       console.log('Message stored locally:', message);
@@ -147,15 +139,12 @@ const SmsListenerComponent = () => {
     }
   };
 
-  // Function to send messages from local storage
   const sendStoredMessages = async () => {
     try {
       const storedMessages = await AsyncStorage.getItem('storedMessages');
       let messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
-      // console.log("🚀 ~ sendStoredMessages ~ messagesArray:", messagesArray);
+      console.log("🚀 ~ sendStoredMessages ~ messagesArray:", messagesArray)
       if (messagesArray.length > 0) {
-        // messagesArray.length=0
-        // console.log("+++++++++++")
         const messagesToKeep = [];
 
         for (const message of messagesArray) {
@@ -193,14 +182,18 @@ const SmsListenerComponent = () => {
     }
   };
 
-  // Check connection and send or store the message
   const sendOrStoreMessage = async (message) => {
     try {
+      // Check if the message has already been sent
+      const lastMessageSent = await AsyncStorage.getItem('lastMessageSent');
+      if (lastMessageSent === message.msg) {
+        console.log("Message has already been sent, skipping...");
+        return;  // Exit if the message has already been sent
+      }
+
       const state = await NetInfo.fetch();
       
       if (state.isConnected) {
-        // console.log('sendOrStoreMessage connected ..............!', message);
-  
         try {
           const res = await axios.post(targetUrl, message, {
             headers: {
@@ -209,8 +202,11 @@ const SmsListenerComponent = () => {
           });
           
           if (res.status === 200 || res.status === 201) {
-            console.log("The message: " , message)
+            console.log("The message: " , message);
             console.log("Message sent successfully:", res.data);
+
+            // Save the message as sent
+            await AsyncStorage.setItem('lastMessageSent', message.msg);
           } else {
             console.log(`Failed with status ${res.status}:`, res.data);
             storeMessageLocally(message);
@@ -238,7 +234,7 @@ const SmsListenerComponent = () => {
   useEffect(() => {
     const intervalId = BackgroundTimer.setInterval(() => {
       sendStoredMessages();
-    }, 10000);
+    }, 20000);
   
     return () => {
       BackgroundTimer.clearInterval(intervalId);
