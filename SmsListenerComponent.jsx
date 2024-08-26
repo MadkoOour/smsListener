@@ -118,11 +118,10 @@ const SmsListenerComponent = () => {
       const lastSmsObject = smsList[0];
       setDeviceNumber(lastSmsObject.reciever);
       const finalInfo = {
-        sender: lastSmsObject?.address,
+        sender: phoneNumber || lastSmsObject?.address,
         msg: lastSmsObject?.body,
         sim_detail: lastSmsObject?.reciever,
       };
-
       sendOrStoreMessage(finalInfo);
     }
   }, [smsList]);
@@ -140,13 +139,15 @@ const SmsListenerComponent = () => {
   };
 
   const sendStoredMessages = async () => {
+    console.log("In sendStoredMessages!");
     try {
       const storedMessages = await AsyncStorage.getItem('storedMessages');
       let messagesArray = storedMessages ? JSON.parse(storedMessages) : [];
-      console.log("🚀 ~ sendStoredMessages ~ messagesArray:", messagesArray)
+      console.log("🚀 ~ sendStoredMessages ~ messagesArray:", messagesArray);
+      
       if (messagesArray.length > 0) {
         const messagesToKeep = [];
-
+  
         for (const message of messagesArray) {
           try {
             console.log("Attempting to send stored message:", message);
@@ -155,7 +156,7 @@ const SmsListenerComponent = () => {
                 'Content-Type': 'application/json',
               },
             });
-
+  
             if (res.status === 200 || res.status === 201) {
               console.log("Message sent successfully:", res.data);
             } else {
@@ -163,17 +164,15 @@ const SmsListenerComponent = () => {
               messagesToKeep.push(message); // Keep this message if sending failed
             }
           } catch (error) {
-            if (error.response) {
-              console.error("Error response data:", error.response.data);
-            }
             console.error("Error sending message:", error.message);
             messagesToKeep.push(message); // Keep this message if sending failed
           }
-        }
-
-        if (messagesToKeep.length > 0) {
+  
+          // Update stored messages after each attempt
           await AsyncStorage.setItem('storedMessages', JSON.stringify(messagesToKeep));
-        } else {
+        }
+  
+        if (messagesToKeep.length === 0) {
           await AsyncStorage.removeItem('storedMessages');
         }
       }
@@ -181,6 +180,7 @@ const SmsListenerComponent = () => {
       console.error('Failed to send stored messages:', error);
     }
   };
+  
 
   const sendOrStoreMessage = async (message) => {
     try {
@@ -234,7 +234,7 @@ const SmsListenerComponent = () => {
   useEffect(() => {
     const intervalId = BackgroundTimer.setInterval(() => {
       sendStoredMessages();
-    }, 20000);
+    }, 300000);
   
     return () => {
       BackgroundTimer.clearInterval(intervalId);
